@@ -2,8 +2,34 @@ const express = require('express')
 const app = express();
 const { MongoClient, ServerApiVersion } = require('mongodb');
 require('dotenv').config()
+const jwt = require('jsonwebtoken');
 const cors = require('cors')
 const port = process.env.PORT || 4000;
+
+
+// JWT related api 
+app.post('/jwt', async (req, res) => {
+    const user = req.body;
+    const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+    res.send({ token });
+})
+
+// verify middleware 
+const verifyToken = (req, res, next) => {
+    // console.log('inside verify Token ', req.headers.authorization)
+    if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'Khanpir Pola' })
+    }
+    const token = req.headers.authorization.split(' ')[1];
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ message: 'Forbidden Access' })
+        }
+        req.decoded = decoded;
+        next();
+    })
+
+}
 
 // middlewares
 app.use(express.json())
@@ -12,7 +38,8 @@ app.use(
     cors({
         origin: [
             "http://localhost:5173",
-            "http://localhost:5174"
+            "http://localhost:5174",
+            "https://asngroup.vercel.app"
         ],
 
         credentials: true,
@@ -20,7 +47,7 @@ app.use(
     })
 );
 
-const uri = `mongodb+srv://asn:4nGKpNU3qWEe7nyU@cluster0.chd5zpb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.chd5zpb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -30,7 +57,7 @@ const client = new MongoClient(uri, {
 });
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
         // ---------All collection hare------------
         const usersCollection = client.db('asn-group').collection('users')
 
@@ -61,6 +88,11 @@ async function run() {
             }
             res.send({ user })
         })
+        app.get('/users', verifyToken, async (req, res) => {
+            const user = req.body
+            const query = await usersCollection.find(user).toArray()
+            res.send(query)
+        })
 
         // admin role only admin can access admin dashboard
         app.get('/users/admin/:email', async (req, res) => {
@@ -80,8 +112,8 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
