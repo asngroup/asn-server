@@ -63,7 +63,7 @@ async function run() {
 
         // --------user related api--------
         // when user register on site store user information database
-        app.post('/users', verifyToken, async (req, res) => {
+        app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
             const exitingUser = await usersCollection.findOne(query)
@@ -75,7 +75,7 @@ async function run() {
         })
 
         // User role and only user can access on the site
-        app.get('/users/user/:email', verifyToken, async (req, res) => {
+        app.get('/users/user/:email', async (req, res) => {
             const email = req.params.email;
             if (email != req.decoded.email) {
                 return res.status(403).send({ message: 'Unauthorize access' })
@@ -96,7 +96,7 @@ async function run() {
         })
 
         // admin role only admin can access admin dashboard
-        app.get('/users/admin/:email', verifyToken, async (req, res) => {
+        app.get('/users/admin/:email', async (req, res) => {
             const email = req.params.email;
             if (email != req.decoded.email) {
                 return res.status(403).send({ message: 'Unauthorize access' })
